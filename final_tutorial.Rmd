@@ -369,4 +369,4 @@ predictions_all<-
 ```
 
 
-After this tutorial, you may be able to analyze and plot out of a csv databse. As it is mentioned, R is a simple easy to use language with powerful commands. For every readers, hope you can get some help from this tutorial and be able to use it when you need it.
+After this tutorial, you may be able to analyze and plot out of a csv databse. As it is mentioned, R is a simple easy to use language with powerful commands. For every readers, hope you can get some help from this tutorial and be able to use it when you need it. 
