@@ -149,7 +149,7 @@ wr <- dat %>%
 wr
 ```
 
-if we wanted to analyze unmbers based on time, first we need to change arrestDate to a date format that machine recognizes using as.Date, then we can do a plot with number of arrests within two yeras.
+if we wanted to analyze numbers based on time, first we need to change arrestDate to a date format that machine recognizes using as.Date, then we can do a plot with number of arrests within two yeras.
 
 but in this graph we can make a comparison. first we mutated two colomns, month and year, then found how many arresst each month in each year have by summarize in n().
 
@@ -261,7 +261,7 @@ balto_map <- leaflet(dat) %>%
 balto_map
 ```
 
-this database contains more charactersthan numbers, so it woul dbe better if we switch to another database. Here we will be getting data from this database and perform a cross validation. it is a process that generates error in our analysis and tell us how well our model fits. 
+this database contains more characters than numbers, so it would be better if we switch to another database. Here we will be getting data from this database and perform a cross validation. it is a process that generates error in our analysis and tell us how well our model fits. 
 
 first we need to clean the table. let it only contains information suits our needs. this is a world wide map so what we need to do is drop invalide NAs and filter to get US regiones. then let it contains only time location and affordability. also we need to set a time boundary for this table so that it is easier to manage. in order to make use of the affordability trend, we have a ifels generating whether it is going up or down. After all these preperations, we can start the cross validation.
 
@@ -369,4 +369,4 @@ predictions_all<-
 ```
 
 
-After this tutorial, you may be able to analyze and plot out of a csv databse. As it is mentioned, R is a simple easy to use language with powerful commands. For every readers, hope you can get some help from this tutorial and be able to use it when you need it. 
+After this tutorial, you may be able to analyze and plot out of a csv databse. As it is mentioned, R is a simple easy to use language with powerful commands. For every readers, hope you can get some help from this tutorial and be able to use it when you need it. thank you
