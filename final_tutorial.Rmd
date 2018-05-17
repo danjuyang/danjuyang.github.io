@@ -2,18 +2,371 @@
 title: "final_tutorial"
 output: html_document
 ---
+CMSC 421 final
+Tutorial of data science with R markdown
+
+Start off with this basic tutorial, R is not a hard language to start, it has simple instructions and can do basically anything with it. with help of some external plugins we are exenable to create html and even mark things over existing maps.
+
+R is a language that was designed to analyze datas from table and do illustrations of them. It is a simple literal language that can be easily understood. In this project we will be talking about how csv data was imported, illustarated and analyzed in R studio. We will start from basic operations for zero background to more complex analysis.
+
+The data base used in this is police arrest record in baltimore within 2011 and 2012, this dataset has many important attributes we need such as date time, location, and specific details of suspects arrested.
+
+First we need to get librarys that will be used in the analysis. Many of the operations will require a library to use.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(stringr)
+library(leaflet)
+library(ggplot2)
+library(broom)
+library(dplyr)
+library(lubridate)
+library(randomForest)
+library(ROCR)
+library(caret)
 ```
 
+Then it is time to import the csv watabase using read_csv.
 
 ```{r}
+arrest_tab <- read_csv("http://www.hcbravo.org/IntroDataSci/misc/BPD_Arrests.csv")
+dat <- arrest_tab
+``` 
+  
+pipeline operation using %>% is essentialt for triming the database to what we want it to be. Simply put %>% between commands and it will process. then use <- to assign changed tables to a new viriable name to keep it.
 
+filter() is a command used for filtering rows that satisfies the premises. In this case the filter is filtering out rows that have NA locations.
+
+seperate() is a command that seperates one single attribute, when location has longitude and latitude inside one location attribute, it is easier to use when seperated.
+
+mutate() is a function that addes a new attribute into the table, mostly based on what has already been provided.
+
+Str_replace() in this was used as a function to trim latitude and longitude so that they could be more accessible, and used a number.
+
+sample() was put in the last to limit actual rows in the table so that the dat we newly created will have fewer rows for faster computing. In this case we use only 1000.
+
+We can see the table now is ready to be used. 
+  
+```{r}
+dat <- arrest_tab %>%
+  filter(!is.na(`Location 1`)) %>%
+  separate(`Location 1`, c("lat","lng"), sep=",") %>%
+  mutate(lat=as.numeric(str_replace(lat, "\\(", ""))) %>%
+  mutate(lng=as.numeric(str_replace(lng, "\\)", ""))) %>%
+  sample_n(1000)
+dat
 ```
 
+we have the table now, the first thing we will do with R commands is getting average
 
 ```{r}
+mean_age = mean(dat$age)
+mean_age
+```
+
+standard deviation
+
+```{r}
+sd_age = sd(dat$age)
+sd_age
+```
+
+pnorm is a function used to compute probability of having less or larger of a given point. in this case, it means the possibilty of choosing a random suspect, the posibility of the suspect being younger than 30 years old.
+
+```{r}
+probability = pnorm(30, mean_age, sd_age)
+probability
+```
+
+then 1 minus it would be the probability for the suspect being older than 30 years old
+
+```{r}
+probability = 1- pnorm(30, mean_age, sd_age)
+probability
+```
+
+We can also use pipeline to compute properties such as average and maximum. here we will be computing average age of arrest for male and females.
+
+first we select() collomns of sex and age from the table. then we want them to be displayed into only two categories so we group_by() them by sex so that only two rows will be displayed.
+
+Summarize() is a function used with group_by() to do the computation after it is arranged into two sex. here we created a new attribute called mean_age, and we made it equals to mean() of age in table. finally we arrange() the mean_age for display.
+
+follow the same steps and change mean to max, we can get max age arrested for both sexes. also we can swap sex for race and get a summary on that. As long there is a function for it, it can be arranged and displayed.
+
+```{r}
+average <- dat %>%
+  select(sex, age)%>%
+  group_by(sex)%>%
+  summarize(mean_age=mean(age))%>%
+  arrange(mean_age)
+average
+```
+
+We can plot out of the table using ggplot, we have already library(ggplot) in first section so we start straigh forward. put ggplot() into the end of pipeline, and x aes to sex, y aes to mean_age, plus + the plot type and properties, we can easily get a graph. in this graph, male and femaal arrests are close, there are no specific gender gaps when talking about arrests. as for different races, there are some minor differences among different races, but generally they were among similar number range.
+
+```{r}
+average %>%
+  ggplot(aes(x=sex, y=mean_age))+
+    coord_flip()+
+    geom_bar(stat="identity")
+```
+```{r}
+average2 <- dat %>%
+  select(race, age)%>%
+  group_by(race)%>%
+  summarize(mean_age=mean(age))%>%
+  arrange(mean_age)
+average2 %>%
+  ggplot(aes(x=race, y=mean_age))+
+    geom_bar(stat="identity")
+```
+
+or we can see how the ages were spreaded within races. but in order to make it more clear, we first slice() it so that we have fewer rows to put into the graph, here we chose only first 500 incidents. same as previous ones on x y. but we changed type to point plot to show a general proportion of ages. in the xlab() ylab() and ggtitle() we can put titles and words in it. dot plot can be usd in almost any table with a number in it as attribute.
+
+```{r}
+wr <- dat %>%
+  select(race, age)%>%
+  group_by(race)%>%
+  ggplot(aes(x = race, y = age)) +
+    geom_point() +
+    xlab("races") +
+    ylab("age") +
+    ggtitle("Race and age density")
+wr
+```
+
+However, choosing a right graph type is important. in this plot, dots can be printed but it in fact showed nothing. dots in the graph were stucked together and patterns are hard to tell. in this case we need a violin plot. now we are able to see which age group of people got arrested most. and we can see that majority of arrests for every race are from younger than 40.
+
+```{r}
+wr <- dat %>%
+  select(race, age)%>%
+  group_by(race)%>%
+  ggplot(aes(x = race, y = age)) +
+    geom_violin() +
+    xlab("races") +
+    ylab("age") +
+    ggtitle("Race and age density")
+wr
+```
+
+if we wanted to analyze unmbers based on time, first we need to change arrestDate to a date format that machine recognizes using as.Date, then we can do a plot with number of arrests within two yeras.
+
+but in this graph we can make a comparison. first we mutated two colomns, month and year, then found how many arresst each month in each year have by summarize in n().
+
+we need to change them back to interger since mutate makes them characters. then we have a comparative plot showing how every month had been in both years. we can swap dots to text plot, and using year as label. so we can see from the chart that some times different between years are large, some times are small. in the spring seasons between feb and may, arrest number are very similar, while othertimes it varies largely. and there is not a clear pattern on whether 2012 have a significant increase amount of crime. so maybe this pair of data is not suitabel for regression.
+
+```{r}
+dat$arrestDate<- as.Date(dat$arrestDate, "%m/%d/%Y")
+mons <- dat%>%
+  mutate(month = format(arrestDate, "%m"))%>%
+  mutate(year = format(arrestDate, "%Y"))%>%
+  group_by(year,month)%>%
+  summarise(numarrest=n())
+mons$year <- as.integer(mons$year)
+mons %>%
+  group_by(year, month)%>%
+  ggplot(aes(x = month, y = numarrest, label=year)) +
+      geom_text() +
+      labs(title = "Arrest number in Baltimore",
+           subtitle = "year 2012 by month",
+           y = "number of arrest",
+           x = "month") + theme_bw(base_size = 15)
+```
+
+although we can not see things change chronologically, we may be able to find relations on age of suspects. first we group all arrests by age and count them up. then we use a point plot and make a regression line with geom_smooth(method=lm). and we have a clear negative relationship between age and number of arrests. excepts age lover than 18, number of arrests are reversed with age of suspects. which means there were more young people arrested than old people in Baltimore in year of 2011 and 2012.
+
+```{r}
+age <- dat%>%
+  group_by(age)%>%
+  summarise(numarrest=n())
+age %>%
+  ggplot(mapping=aes(y=numarrest,x=age))+
+  geom_point()+
+  geom_smooth(method=lm)+
+  xlab("age of suspect")+
+  ylab("number of arrest")+
+  ggtitle("relations with age and number of arrest")
+```
+
+for the table age we created around suspect age and number of arrests. we can run a hypothesis of data in this table.  we can see that the p value is way too small to determine, so we can be certain about our previous conclusion of clear negative relationship between age and number of arrests. estimate of the slope in this case is -0.7973123, meanning that on average, when age group went up to 0.79, there is one less suspect among that age being arrested. but this is a fitof linear model, we need to determine more about htis relationship, since it could have other properties.
+
+```{r}
+model <-
+    lm(age~numarrest, data=age)
+  tidied_model <- 
+    model %>%
+    tidy() %>%
+    select(term, estimate, statistic, p.value)
+  tidied_model
+```
+
+here we can see that residuals are not identically distributed, linear model would be the best fit. we can be very confident on our result of relationship.
+
+```{r}
+ residuals <-
+    model %>%
+    augment()
+  residual_plot <-
+    residuals %>% 
+    ggplot(aes(x=age, y=.resid)) +
+    geom_point() 
+  residual_plot
+```
+
+same as date and year, we can easily found what time at a day there are most arrests and least arrests. first we extract hour out of arrestTime by mutate and group_by its hour number extraction. then we can plot the relations in graph.
+
+in this graph, it is clear that most arrests are in afternoons, while time moves from 7pm to early morning at around 5, number of arrests declined in a noticable pattern, then it started to climb and reaches top at 7 again.
+
+```{r}
+mons <- dat%>%
+  mutate(hour = format(arrestTime, "%h"))%>%
+  group_by(hour = str_extract(hour, "[0-9][0-9]+"))%>%
+  summarise(numarrest=n())
+mons%>%
+  ggplot(aes(x=hour,y=numarrest))+
+           geom_point()
+```
+
+if we wanted to know which distrct has more arrests, we can simply do what we did before and plot a bar graph on count. from this plot, we can say that the northern district had a lower number of arrests, maybe it could be safer than others
+
+```{r}
+dis <- dat%>%
+  group_by(district)%>%
+  summarise(numarrest=n())
+dis %>%
+  ggplot(aes(x=district, y=numarrest))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_text(angle=-90, hjust=0))
 
 ```
 
+also there is a plug in that allows us to draw it on maps. in previous sections we have already seperated latitude and longitude for mapping. this is a map that shows arrests in baltimore based on the database provided. it has male and female markers for different genders and age show upon click. defult to be clusted together. just zoom in we can find more detailed locations of each specific arrests took place and gender of suspects.
+
+mfIcon is created by icon() to find icon images on links and use them to mark on map. icon size and settings can also be found in it. then we make a map with leaflet(), and addTiles() into it. setView() is for a default view it lands on, then markers are added by addMarkers(), popup is optional for the markes, and can be directly referenced from other attributes. clusterOptions is another optional thing that enables cluster function, so that a more general view canbe presented. now we can see from the map, center and north west Baltimore was the places that have most arrests.
+
+```{r}
+mfIcons <- icons(
+  iconUrl = ifelse(dat$sex=="M",
+    "http://icons.iconarchive.com/icons/custom-icon-design/flatastic-7/512/Male-icon.png",
+    "http://icons.iconarchive.com/icons/custom-icon-design/flatastic-7/512/Female-icon.png"
+  ),
+  iconWidth = 15, iconHeight = 15,
+  iconAnchorX = 22, iconAnchorY = 94
+)
+balto_map <- leaflet(dat) %>%
+  addTiles() %>%
+  setView(lat=39.29, lng=-76.61, zoom=11)%>%
+  addMarkers(~lng, ~lat, icon = mfIcons,popup = ~as.character(age),
+  clusterOptions = markerClusterOptions())
+balto_map
+```
+
+this database contains more charactersthan numbers, so it woul dbe better if we switch to another database. Here we will be getting data from this database and perform a cross validation. it is a process that generates error in our analysis and tell us how well our model fits. 
+
+first we need to clean the table. let it only contains information suits our needs. this is a world wide map so what we need to do is drop invalide NAs and filter to get US regiones. then let it contains only time location and affordability. also we need to set a time boundary for this table so that it is easier to manage. in order to make use of the affordability trend, we have a ifels generating whether it is going up or down. After all these preperations, we can start the cross validation.
+
+```{r}
+csv_file <- "http://www.hcbravo.org/IntroDataSci/misc/Affordability_Wide_2017Q4_Public.csv"
+tidy_afford <- read_csv(csv_file) %>%
+  filter(Index == "Mortgage Affordability") %>%
+  drop_na() %>%
+  filter(RegionID != 0, RegionName != "United States") %>%
+  dplyr::select(RegionID, RegionName, matches("^[1|2]")) %>%
+  gather(time, affordability, matches("^[1|2]")) %>%
+  type_convert(col_types=cols(time=col_date(format="%Y-%m")))
+tidy_afford
+
+outcome_df <- tidy_afford %>%
+  mutate(yq = quarter(time, with_year=TRUE)) %>%
+  filter(yq %in% c("2016.4", "2017.4")) %>%
+  select(RegionID, RegionName, yq, affordability) %>%
+  spread(yq, affordability) %>%
+  mutate(diff = `2017.4` - `2016.4`) %>%
+  mutate(Direction = ifelse(diff>0, "up", "down")) %>%
+  select(RegionID, RegionName, Direction)
+outcome_df
+
+predictor_df <- tidy_afford %>%
+  filter(year(time) <= 2016)
+```
+
+first we filter years of interest and get statistics based on regionID, there are mean, sd and z value of these.
+```{r}
+standardized_df <- predictor_df %>%
+  filter(year(time) %in% 2006:2016) %>%
+  group_by(RegionID) %>%
+  mutate(mean_aff = mean(affordability)) %>%
+  mutate(sd_aff = sd(affordability)) %>%
+  mutate(z_aff = (affordability - mean_aff) / sd_aff) %>%
+  ungroup()
+standardized_df
+```
+
+then we can work on quarterly difference. we have created two matrix.
+```{r}
+wide_df <- standardized_df %>%
+  select(RegionID, time, z_aff) %>%
+  tidyr::spread(time, z_aff)
+wide_df
+
+matrix_1 <- wide_df %>%
+  select(-RegionID) %>%
+  as.matrix() %>%
+  .[,-1]
+
+matrix_2 <- wide_df %>%
+  select(-RegionID) %>%
+  as.matrix() %>%
+  .[,-ncol(.)]
+
+diff_df <- (matrix_1 - matrix_2) %>%
+  magrittr::set_colnames(NULL) %>%
+  as_data_frame() %>%
+  mutate(RegionID = wide_df$RegionID)
+
+final_df <- diff_df %>%
+  inner_join(outcome_df %>% select(RegionID, Direction), by="RegionID") %>%
+  mutate(Direction=factor(Direction, levels=c("down", "up")))
+final_df
+```
+
+cross validation the whole part, first we need to fit and gather results, then split to train, then gather a final result.
+
+```{r}
+result <- createFolds(final_df$Direction, k=10)%>%
+  purrr::imap(function(test_indices,fold_number){
+    db_train<- final_df%>%
+      select(-RegionID)%>%
+      slice(-test_indices)
+    ts1<-randomForest(Direction~.,data=db_train, ntree=500)
+    db_test<-final_df%>%
+      select(-RegionID)%>%
+      slice(test_indices)
+    db_test%>%
+      select(labelgot=Direction)%>%
+      mutate(fold=fold_number)%>%
+      mutate(prob_pos=predict(ts1, newdata=db_test, type="prob")[,"up"])%>%
+      mutate(prelab=ifelse(prob_pos>0.5, "up", "down"))
+  })%>%
+  purrr::reduce(bind_rows)
+result
+```
+
+then print out the result and do a curve plot on average true positive rate and average false positive rate.
+```{r}
+labels <- split(result$labelgot, result$fold)
+
+mean_auc<-split(result$prob_pos, result$fold)%>%
+  prediction(labels)%>%
+  performance(measure="auc")%>%
+  slot("y.values")%>%unlist()%>%mean()
+
+predictions_all<-
+  split(result$prob_pos, result$fold)%>%
+  prediction(labels)%>%
+  performance(measure="tpr", x.measure="fpr")%>%
+  plot(avg="threshold", col="blue", lwd=2)
+```
+
+
+After this tutorial, you may be able to analyze and plot out of a csv databse. As it is mentioned, R is a simple easy to use language with powerful commands. For every readers, hope you can get some help from this tutorial and be able to use it when you need it.
